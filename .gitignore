@@ -1,0 +1,22 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+
+# Rider
+.idea/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+
+# Logs
+*.log
