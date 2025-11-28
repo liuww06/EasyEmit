@@ -10,7 +10,15 @@
       "Bash(copy:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dotnet pack:*)",
+      "Bash(dotnet nuget verify:*)",
+      "Bash(dotnet nuget push:*)",
+      "Bash(unzip:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet run:*)",
+      "Bash(csc:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,9 +1,57 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- NuGet Package Metadata -->
+    <PackageId>Leo.EasyEmit</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>reflection;emit;il;dynamic;runtime;codegen;assembly;type;netstandard;net6;net8;net9</PackageTags>
+    <Title>EasyEmit - Dynamic IL Generation Library</Title>
+    <Description>A high-level, fluent abstraction wrapper over native .NET System.Reflection.Emit that allows developers to create dynamic assemblies, types, and methods easily without dealing with complex OpCodes and manual stack management. Supports .NET 6.0+.</Description>
+    <Summary>Easy-to-use fluent API for dynamic .NET assembly and type generation using Reflection.Emit. Supports for .NET 6.0+.</Summary>
+
+    <!-- Package Project URL -->
+    <PackageProjectUrl>https://github.com/liuww06/EasyEmit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/liuww06/EasyEmit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Package Information -->
+    <Authors>Liuww06</Authors>
+    <Company>EasyEmit</Company>
+    <Copyright>Copyright © 2025 EasyEmit</Copyright>
+
+    <!-- License Information -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
+
+    <!-- Package Types -->
+    <PackAsSingleFile>true</PackAsSingleFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+    <!-- Development Information -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+    <!-- Compiler Settings -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <!-- Package Items -->
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- SourceLink Support -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+  </ItemGroup>
 
 </Project>
