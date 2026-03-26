@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using EasyEmit;
 
@@ -13,81 +15,60 @@ public class AdvancedExamples
     {
         Console.WriteLine("=== Advanced EasyEmit Examples ===\n");
 
-        // Example 1: Array Sum Calculator
         Console.WriteLine("1. Array Sum Calculator:");
         CreateArraySumCalculator();
         Console.WriteLine();
 
-        // Example 2: Fibonacci Sequence Generator
         Console.WriteLine("2. Fibonacci Sequence Generator:");
         CreateFibonacciGenerator();
         Console.WriteLine();
 
-        // Example 3: Greeting with Conditional Logic
-        Console.WriteLine("3. Conditional Greeting:");
+        Console.WriteLine("3. Greeting with Conditional Logic:");
         CreateConditionalGreeter();
         Console.WriteLine();
 
-        // Example 4: Simple State Machine
         Console.WriteLine("4. Simple State Machine:");
         CreateStateMachine();
         Console.WriteLine();
+
+        Console.WriteLine("5. ForEach with Enumerable Collections:");
+        CreateEnumerableProcessor();
+        Console.WriteLine();
     }
 
-    /// <summary>
-    /// Creates a calculator that sums all elements in an integer array
-    /// </summary>
     static void CreateArraySumCalculator()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("ArrayCalculatorAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("ArrayCalculatorAssembly");
         var typeBuilder = assemblyBuilder.DefineType("ArrayCalculator");
 
         var sumMethod = typeBuilder.DefineMethod("Sum", typeof(int), new[] { typeof(int[]) });
         sumMethod.Body(il =>
         {
             var sum = il.DeclareLocal<int>("sum");
-            var i = il.DeclareLocal<int>("i");
             var length = il.DeclareLocal<int>("length");
 
-            // sum = 0
             il.LoadConstant(0).StoreLocal(sum);
 
-            // length = array.Length
             il.LoadArgument(1)
               .CallVirtual(typeof(Array).GetProperty("Length")?.GetGetMethod())
               .StoreLocal(length);
 
-            // Initialize i = 0
-            il.LoadConstant(0).StoreLocal(i);
+            il.For(0, il => il.LoadLocal(length), (body, idx) =>
+            {
+                body.LoadLocal(sum)
+                     .LoadArgument(1)
+                     .LoadLocal(idx)
+                     .Callvirt(typeof(int[]).GetMethod("Get"))
+                     .Add()
+                     .StoreLocal(sum);
+            });
 
-            // while (i < length)
-            il.While(
-                condition => condition.LoadLocal(i).LoadLocal(length),
-                body =>
-                {
-                    // sum += array[i]
-                    body.LoadLocal(sum)
-                         .LoadArgument(1)
-                         .LoadLocal(i)
-                         .Callvirt(typeof(int[]).GetMethod("Get"))
-                         .Add()
-                         .StoreLocal(sum);
-
-                    // i++
-                    body.LoadLocal(i)
-                         .LoadConstant(1)
-                         .Add()
-                         .StoreLocal(i);
-                });
-
-            // return sum
             il.LoadLocal(sum).Return();
         });
 
         var calculatorType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test the calculator
         var calculator = Activator.CreateInstance(calculatorType);
         var sumMethodInfo = calculatorType.GetMethod("Sum");
 
@@ -106,12 +87,9 @@ public class AdvancedExamples
         }
     }
 
-    /// <summary>
-    /// Creates a Fibonacci sequence generator
-    /// </summary>
     static void CreateFibonacciGenerator()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("FibonacciAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("FibonacciAssembly");
         var typeBuilder = assemblyBuilder.DefineType("FibonacciGenerator");
 
         var fibonacciMethod = typeBuilder.DefineMethod("Generate", typeof(int[]), new[] { typeof(int) });
@@ -121,17 +99,17 @@ public class AdvancedExamples
             var fibArray = il.DeclareLocal<int[]>("fibArray");
             var i = il.DeclareLocal<int>("i");
 
-            // n = input parameter
             il.LoadArgument(1).StoreLocal(n);
 
-            // Create array of size n
             il.LoadLocal(n)
               .NewObj(typeof(int[]).GetConstructor(new[] { typeof(int) }))
               .StoreLocal(fibArray);
 
             // if (n >= 1) fibArray[0] = 0
             il.If(
-                condition => condition.LoadLocal(n).LoadConstant(1),
+                left: l => l.LoadLocal(n),
+                comparison: ILBuilder.Cgte,
+                right: r => r.LoadConstant(1),
                 trueBody =>
                 {
                     trueBody.LoadLocal(fibArray)
@@ -142,7 +120,9 @@ public class AdvancedExamples
 
             // if (n >= 2) fibArray[1] = 1
             il.If(
-                condition => condition.LoadLocal(n).LoadConstant(2),
+                left: l => l.LoadLocal(n),
+                comparison: ILBuilder.Cgte,
+                right: r => r.LoadConstant(2),
                 trueBody =>
                 {
                     trueBody.LoadLocal(fibArray)
@@ -151,15 +131,12 @@ public class AdvancedExamples
                              .Callvirt(typeof(int[]).GetMethod("Set"));
                 });
 
-            // Initialize i = 2
             il.LoadConstant(2).StoreLocal(i);
 
-            // while (i < n)
             il.While(
-                condition => condition.LoadLocal(i).LoadLocal(n),
+                condition: c => c.LoadLocal(i).LoadLocal(n).Clt(),
                 body =>
                 {
-                    // fibArray[i] = fibArray[i-1] + fibArray[i-2]
                     body.LoadLocal(fibArray)
                          .LoadLocal(i)
                          .LoadLocal(fibArray)
@@ -175,21 +152,18 @@ public class AdvancedExamples
                          .Add()
                          .Callvirt(typeof(int[]).GetMethod("Set"));
 
-                    // i++
                     body.LoadLocal(i)
                          .LoadConstant(1)
                          .Add()
                          .StoreLocal(i);
                 });
 
-            // Return the array
             il.LoadLocal(fibArray).Return();
         });
 
         var generatorType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test the generator
         var generator = Activator.CreateInstance(generatorType);
         var generateMethodInfo = generatorType.GetMethod("Generate");
 
@@ -201,12 +175,9 @@ public class AdvancedExamples
         }
     }
 
-    /// <summary>
-    /// Creates a conditional greeter that changes message based on time of day
-    /// </summary>
     static void CreateConditionalGreeter()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("ConditionalGreeterAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("ConditionalGreeterAssembly");
         var typeBuilder = assemblyBuilder.DefineType("ConditionalGreeter");
 
         var greetMethod = typeBuilder.DefineMethod("Greet", typeof(string), new[] { typeof(string), typeof(int) });
@@ -215,15 +186,14 @@ public class AdvancedExamples
             var name = il.DeclareLocal<string>("name");
             var hour = il.DeclareLocal<int>("hour");
 
-            // name = parameter 1
             il.LoadArgument(1).StoreLocal(name);
-
-            // hour = parameter 2
             il.LoadArgument(2).StoreLocal(hour);
 
-            // if (hour < 12) -> Good morning
+            // Using the safe If API with comparison
             il.If(
-                condition => condition.LoadLocal(hour).LoadConstant(12),
+                left: l => l.LoadLocal(hour),
+                comparison: ILBuilder.Clt,
+                right: r => r.LoadConstant(12),
                 trueBody =>
                 {
                     trueBody.LoadConstant("Good morning, ")
@@ -231,12 +201,13 @@ public class AdvancedExamples
                              .CallStatic(typeof(string).GetMethod("Concat", new[] { typeof(string), typeof(string) }))
                              .Return();
                 })
-             // else if (hour < 18) -> Good afternoon
              .Else(
                  elseBody =>
                  {
                      elseBody.If(
-                         condition => condition.LoadLocal(hour).LoadConstant(18),
+                         left: l => l.LoadLocal(hour),
+                         comparison: ILBuilder.Clt,
+                         right: r => r.LoadConstant(18),
                          trueBody =>
                          {
                              trueBody.LoadConstant("Good afternoon, ")
@@ -244,7 +215,6 @@ public class AdvancedExamples
                                       .CallStatic(typeof(string).GetMethod("Concat", new[] { typeof(string), typeof(string) }))
                                       .Return();
                          })
-                     // else -> Good evening
                      .Else(finalBody =>
                      {
                          finalBody.LoadConstant("Good evening, ")
@@ -258,17 +228,16 @@ public class AdvancedExamples
         var greeterType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test the greeter
         var greeter = Activator.CreateInstance(greeterType);
         var greetMethodInfo = greeterType.GetMethod("Greet");
 
         var testCases = new[]
         {
-            ("Alice", 8),    // Morning
-            ("Bob", 14),     // Afternoon
-            ("Charlie", 20),  // Evening
-            ("Diana", 11),    // Still morning
-            ("Eve", 18)       // Evening (exact boundary)
+            ("Alice", 8),
+            ("Bob", 14),
+            ("Charlie", 20),
+            ("Diana", 11),
+            ("Eve", 18)
         };
 
         foreach (var (name, hour) in testCases)
@@ -278,23 +247,23 @@ public class AdvancedExamples
         }
     }
 
-    /// <summary>
-    /// Creates a simple state machine with states: Idle, Running, Paused, Stopped
-    /// </summary>
     static void CreateStateMachine()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("StateMachineAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("StateMachineAssembly");
         var typeBuilder = assemblyBuilder.DefineType("SimpleStateMachine");
 
-        // Define states as constants
         var stateField = typeBuilder.DefineField("_currentState", typeof(int), FieldAttributes.Private);
+        var stateFieldInfo = typeof(SimpleStateMachine).GetField("_currentState");
 
         var startMethod = typeBuilder.DefineMethod("Start", typeof(void), Type.EmptyTypes);
         startMethod.Body(il =>
         {
+            // For now we use a workaround since the field info is only available after CreateType
+            // In practice users would get the FieldInfo from the created type
             il.LoadThis()
-              .LoadConstant(1) // Running state
-              .StoreLocal(stateField.GetFieldDefinition())
+              .LoadConstant(1)
+              .Pop()
+              .Pop()
               .Return();
         });
 
@@ -302,8 +271,9 @@ public class AdvancedExamples
         pauseMethod.Body(il =>
         {
             il.LoadThis()
-              .LoadConstant(2) // Paused state
-              .StoreLocal(stateField.GetFieldDefinition())
+              .LoadConstant(2)
+              .Pop()
+              .Pop()
               .Return();
         });
 
@@ -311,36 +281,89 @@ public class AdvancedExamples
         stopMethod.Body(il =>
         {
             il.LoadThis()
-              .LoadConstant(3) // Stopped state
-              .StoreLocal(stateField.GetFieldDefinition())
+              .LoadConstant(3)
+              .Pop()
+              .Pop()
               .Return();
         });
 
         var getStateMethod = typeBuilder.DefineMethod("GetState", typeof(string), Type.EmptyTypes);
         getStateMethod.Body(il =>
         {
+            // Simple return based on stored state using the safe If API
+            il.LoadThis()
+              .Emit(System.Reflection.Emit.OpCodes.Ldfld, 0)
+              .Return();
+        });
+
+        var stateMachineType = typeBuilder.CreateType();
+        var assembly = assemblyBuilder.Build();
+
+        // Get the field info from the created type
+        var currentStateField = stateMachineType.GetField("_currentState")!;
+
+        // Rebuild with correct field access
+        var assemblyBuilder2 = EmitFactory.NewAssembly("StateMachineAssembly2");
+        var typeBuilder2 = assemblyBuilder2.DefineType("SimpleStateMachine2");
+
+        typeBuilder2.DefineField("_currentState", typeof(int), FieldAttributes.Private);
+
+        var startMethod2 = typeBuilder2.DefineMethod("Start", typeof(void), Type.EmptyTypes);
+        startMethod2.Body(il =>
+        {
+            il.LoadThis()
+              .LoadConstant(1)
+              .StoreField(currentStateField)
+              .Return();
+        });
+
+        var pauseMethod2 = typeBuilder2.DefineMethod("Pause", typeof(void), Type.EmptyTypes);
+        pauseMethod2.Body(il =>
+        {
+            il.LoadThis()
+              .LoadConstant(2)
+              .StoreField(currentStateField)
+              .Return();
+        });
+
+        var stopMethod2 = typeBuilder2.DefineMethod("Stop", typeof(void), Type.EmptyTypes);
+        stopMethod2.Body(il =>
+        {
+            il.LoadThis()
+              .LoadConstant(3)
+              .StoreField(currentStateField)
+              .Return();
+        });
+
+        var getStateMethod2 = typeBuilder2.DefineMethod("GetState", typeof(string), Type.EmptyTypes);
+        getStateMethod2.Body(il =>
+        {
             var currentState = il.DeclareLocal<int>("currentState");
 
-            // currentState = _currentState
             il.LoadThis()
-              .LoadLocal(stateField.GetFieldDefinition())
+              .LoadField(currentStateField)
               .StoreLocal(currentState);
 
-            // Switch on current state
             il.If(
-                condition => condition.LoadLocal(currentState).LoadConstant(0),
+                left: l => l.LoadLocal(currentState),
+                comparison: ILBuilder.Equal,
+                right: r => r.LoadConstant(0),
                 trueBody => trueBody.LoadConstant("Idle").Return())
              .Else(
                  elseBody =>
                  {
                      elseBody.If(
-                         condition => condition.LoadLocal(currentState).LoadConstant(1),
+                         left: l => l.LoadLocal(currentState),
+                         comparison: ILBuilder.Equal,
+                         right: r => r.LoadConstant(1),
                          trueBody => trueBody.LoadConstant("Running").Return())
                      .Else(
                          nestedElse =>
                          {
                              nestedElse.If(
-                                 condition => condition.LoadLocal(currentState).LoadConstant(2),
+                                 left: l => l.LoadLocal(currentState),
+                                 comparison: ILBuilder.Equal,
+                                 right: r => r.LoadConstant(2),
                                  trueBody => trueBody.LoadConstant("Paused").Return())
                              .Else(
                                  finalElse => finalElse.LoadConstant("Stopped").Return());
@@ -348,15 +371,14 @@ public class AdvancedExamples
                  });
         });
 
-        var stateMachineType = typeBuilder.CreateType();
-        var assembly = assemblyBuilder.Build();
+        var stateMachineType2 = typeBuilder2.CreateType();
+        assemblyBuilder2.Build();
 
-        // Test the state machine
-        var stateMachine = Activator.CreateInstance(stateMachineType);
-        var startMethodInfo = stateMachineType.GetMethod("Start");
-        var pauseMethodInfo = stateMachineType.GetMethod("Pause");
-        var stopMethodInfo = stateMachineType.GetMethod("Stop");
-        var getStateMethodInfo = stateMachineType.GetMethod("GetState");
+        var stateMachine = Activator.CreateInstance(stateMachineType2);
+        var startMethodInfo = stateMachineType2.GetMethod("Start");
+        var pauseMethodInfo = stateMachineType2.GetMethod("Pause");
+        var stopMethodInfo = stateMachineType2.GetMethod("Stop");
+        var getStateMethodInfo = stateMachineType2.GetMethod("GetState");
 
         Console.WriteLine($"  Initial state: {getStateMethodInfo?.Invoke(stateMachine, null)}");
 
@@ -368,5 +390,202 @@ public class AdvancedExamples
 
         stopMethodInfo?.Invoke(stateMachine, null);
         Console.WriteLine($"  After Stop(): {getStateMethodInfo?.Invoke(stateMachine, null)}");
+    }
+
+    static void CreateEnumerableProcessor()
+    {
+        Console.WriteLine("  Generic List Processor:");
+        CreateListSumProcessor();
+
+        Console.WriteLine();
+
+        Console.WriteLine("  Dictionary Processor:");
+        CreateDictionaryProcessor();
+
+        Console.WriteLine();
+
+        Console.WriteLine("  String Processor:");
+        CreateStringProcessor();
+    }
+
+    static void CreateListSumProcessor()
+    {
+        var assemblyBuilder = EmitFactory.NewAssembly("ListProcessorAssembly");
+        var typeBuilder = assemblyBuilder.DefineType("ListProcessor");
+
+        var sumMethod = typeBuilder.DefineMethod("Sum", typeof(int), new[] { typeof(List<int>) });
+        sumMethod.Body(il =>
+        {
+            var sum = il.DeclareLocal<int>("sum");
+
+            il.LoadConstant(0).StoreLocal(sum);
+
+            il.ForEachEnumerable<int>(
+                getEnumerable: enumerable => enumerable.LoadArgument(1),
+                body: (loopIl, element) =>
+                {
+                    loopIl.LoadLocal(sum)
+                          .LoadLocal(element)
+                          .Add()
+                          .StoreLocal(sum);
+                });
+
+            il.LoadLocal(sum).Return();
+        });
+
+        var processorType = typeBuilder.CreateType();
+        var assembly = assemblyBuilder.Build();
+
+        var processor = Activator.CreateInstance(processorType);
+        var sumMethodInfo = processorType.GetMethod("Sum");
+
+        var testLists = new[]
+        {
+            new List<int> { 1, 2, 3, 4, 5 },
+            new List<int> { 10, -5, 7, 0, 3 },
+            new List<int> { 100, 200, 300 },
+            new List<int>()
+        };
+
+        foreach (var list in testLists)
+        {
+            var result = sumMethodInfo?.Invoke(processor, new object[] { list });
+            Console.WriteLine($"    Sum([{string.Join(", ", list)}]) = {result}");
+        }
+    }
+
+    static void CreateDictionaryProcessor()
+    {
+        var assemblyBuilder = EmitFactory.NewAssembly("DictionaryProcessorAssembly");
+        var typeBuilder = assemblyBuilder.DefineType("DictionaryProcessor");
+
+        var getKeysMethod = typeBuilder.DefineMethod("GetKeys", typeof(string[]), new[] { typeof(object) });
+        getKeysMethod.Body(il =>
+        {
+            var dictionary = il.DeclareLocal(typeof(IEnumerable), "dictionary");
+            var keysList = il.DeclareLocal(typeof(List<string>), "keysList");
+
+            il.LoadArgument(1)
+              .Emit(System.Reflection.Emit.OpCodes.Castclass, typeof(IEnumerable))
+              .StoreLocal(dictionary);
+
+            il.NewObj(typeof(List<string>).GetConstructor(Type.EmptyTypes))
+              .StoreLocal(keysList);
+
+            il.ForEachEnumerable(
+                elementType: typeof(object),
+                getEnumerable: enumerable => enumerable.LoadLocal(dictionary),
+                body: (loopIl, element) =>
+                {
+                    loopIl.LoadLocal(element)
+                          .Emit(System.Reflection.Emit.OpCodes.Castclass, typeof(KeyValuePair<string, int>))
+                          .CallVirtual(typeof(KeyValuePair<string, int>).GetProperty("Key")!.GetGetMethod()!)
+                          .LoadLocal(keysList)
+                          .CallVirtual(typeof(List<string>).GetMethod("Add", new[] { typeof(string) })!)
+                          .Pop();
+                });
+
+            il.LoadLocal(keysList)
+              .CallVirtual(typeof(List<string>).GetMethod("ToArray")!)
+              .Return();
+        });
+
+        var processorType = typeBuilder.CreateType();
+        var assembly = assemblyBuilder.Build();
+
+        var processor = Activator.CreateInstance(processorType);
+        var getKeysMethodInfo = processorType.GetMethod("GetKeys");
+
+        var testDict = new Dictionary<string, int>
+        {
+            ["apple"] = 5,
+            ["banana"] = 3,
+            ["cherry"] = 8,
+            ["date"] = 1
+        };
+
+        var result = getKeysMethodInfo?.Invoke(processor, new object[] { testDict }) as string[];
+        Console.WriteLine($"    Dictionary keys: [{string.Join(", ", result ?? Array.Empty<string>())}]");
+    }
+
+    static void CreateStringProcessor()
+    {
+        var assemblyBuilder = EmitFactory.NewAssembly("StringProcessorAssembly");
+        var typeBuilder = assemblyBuilder.DefineType("StringProcessor");
+
+        var countVowelsMethod = typeBuilder.DefineMethod("CountVowels", typeof(int), new[] { typeof(string) });
+        countVowelsMethod.Body(il =>
+        {
+            var vowelCount = il.DeclareLocal<int>("vowelCount");
+            var vowels = il.DeclareLocal(typeof(HashSet<char>), "vowels");
+
+            il.LoadConstant(0).StoreLocal(vowelCount);
+
+            il.NewObj(typeof(HashSet<char>).GetConstructor(Type.EmptyTypes))
+              .LoadConstant('a')
+              .CallVirtual(typeof(HashSet<char>).GetMethod("Add", new[] { typeof(char) })!)
+              .Pop()
+              .LoadLocal(vowels)
+              .LoadConstant('e')
+              .CallVirtual(typeof(HashSet<char>).GetMethod("Add", new[] { typeof(char) })!)
+              .Pop()
+              .LoadLocal(vowels)
+              .LoadConstant('i')
+              .CallVirtual(typeof(HashSet<char>).GetMethod("Add", new[] { typeof(char) })!)
+              .Pop()
+              .LoadLocal(vowels)
+              .LoadConstant('o')
+              .CallVirtual(typeof(HashSet<char>).GetMethod("Add", new[] { typeof(char) })!)
+              .Pop()
+              .LoadLocal(vowels)
+              .LoadConstant('u')
+              .CallVirtual(typeof(HashSet<char>).GetMethod("Add", new[] { typeof(char> })!)
+              .Pop()
+              .StoreLocal(vowels);
+
+            il.ForEachEnumerable<char>(
+                getEnumerable: enumerable => enumerable.LoadArgument(1),
+                body: (loopIl, character) =>
+                {
+                    loopIl.LoadLocal(character)
+                          .CallStatic(typeof(char).GetMethod("ToLowerInvariant")!)
+                          .LoadLocal(vowels)
+                          .CallVirtual(typeof(HashSet<char>).GetMethod("Contains", new[] { typeof(char) })!)
+                          .If(
+                              condition: c => { }, // condition already on stack
+                              trueBody =>
+                              {
+                                  trueBody.LoadLocal(vowelCount)
+                                           .LoadConstant(1)
+                                           .Add()
+                                           .StoreLocal(vowelCount);
+                              });
+                });
+
+            il.LoadLocal(vowelCount).Return();
+        });
+
+        var processorType = typeBuilder.CreateType();
+        var assembly = assemblyBuilder.Build();
+
+        var processor = Activator.CreateInstance(processorType);
+        var countVowelsMethodInfo = processorType.GetMethod("CountVowels");
+
+        var testStrings = new[]
+        {
+            "Hello World",
+            "EasyEmit",
+            "C# Programming",
+            "abcdefghijklmnopqrstuvwxyz",
+            "AEIOU aeiou",
+            "",
+            "Rhythm"
+        };
+
+        foreach (var str in testStrings)
+        {
+            var result = countVowelsMethodInfo?.Invoke(processor, new object[] { str });
+            Console.WriteLine($"    \"{str}\": {result} vowels");
+        }
     }
 }

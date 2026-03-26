@@ -13,7 +13,7 @@ public class EasyEmitTests
     public void AssemblyCreation_ShouldCreateValidAssembly()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestAssembly");
         var typeBuilder = assemblyBuilder.DefineType("TestClass");
         var type = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
@@ -29,16 +29,16 @@ public class EasyEmitTests
     public void CreateSimpleCalculator_AddMethod_ShouldReturnCorrectSum()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestCalculatorAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestCalculatorAssembly");
         var typeBuilder = assemblyBuilder.DefineType("Calculator");
 
         var addMethod = typeBuilder.DefineMethod("Add", typeof(int), new[] { typeof(int), typeof(int) });
         addMethod.Body(il =>
         {
-            il.LoadArgument(1)  // Load first parameter
-              .LoadArgument(2)  // Load second parameter
-              .Add()           // Add them
-              .Return();       // Return result
+            il.LoadArgument(1)
+              .LoadArgument(2)
+              .Add()
+              .Return();
         });
 
         var calculatorType = typeBuilder.CreateType();
@@ -57,16 +57,16 @@ public class EasyEmitTests
     public void CreateSimpleCalculator_SubtractMethod_ShouldReturnCorrectDifference()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestCalculatorAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestCalculatorAssembly");
         var typeBuilder = assemblyBuilder.DefineType("Calculator");
 
         var subtractMethod = typeBuilder.DefineMethod("Subtract", typeof(int), new[] { typeof(int), typeof(int) });
         subtractMethod.Body(il =>
         {
-            il.LoadArgument(1)  // Load first parameter
-              .LoadArgument(2)  // Load second parameter
-              .Subtract()      // Subtract second from first
-              .Return();       // Return result
+            il.LoadArgument(1)
+              .LoadArgument(2)
+              .Subtract()
+              .Return();
         });
 
         var calculatorType = typeBuilder.CreateType();
@@ -85,10 +85,9 @@ public class EasyEmitTests
     public void CreateMathOperations_MultiplyAndDivide_ShouldWorkCorrectly()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestMathAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestMathAssembly");
         var typeBuilder = assemblyBuilder.DefineType("MathOperations");
 
-        // Create multiply method
         var multiplyMethod = typeBuilder.DefineMethod("Multiply", typeof(double), new[] { typeof(double), typeof(double) });
         multiplyMethod.Body(il =>
         {
@@ -98,7 +97,6 @@ public class EasyEmitTests
               .Return();
         });
 
-        // Create divide method
         var divideMethod = typeBuilder.DefineMethod("Divide", typeof(double), new[] { typeof(double), typeof(double) });
         divideMethod.Body(il =>
         {
@@ -128,9 +126,9 @@ public class EasyEmitTests
     public void TypeBuilder_WithInheritance_ShouldInheritFromBaseType()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestInheritanceAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestInheritanceAssembly");
         var typeBuilder = assemblyBuilder.DefineType("DerivedClass");
-        typeBuilder.InheritsFrom(typeof(object)); // All classes inherit from object by default
+        typeBuilder.InheritsFrom(typeof(object));
 
         var type = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
@@ -145,7 +143,7 @@ public class EasyEmitTests
     public void CreateTypeWithField_ShouldDefineFieldCorrectly()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestFieldAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestFieldAssembly");
         var typeBuilder = assemblyBuilder.DefineType("ClassWithField");
 
         var fieldBuilder = typeBuilder.DefineField("Value", typeof(int), FieldAttributes.Public);
@@ -166,10 +164,9 @@ public class EasyEmitTests
     public void CreateTypeWithMultipleMethods_ShouldCreateAllMethods()
     {
         // Arrange & Act
-        var assemblyBuilder = EasyEmit.NewAssembly("TestMultiMethodAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("TestMultiMethodAssembly");
         var typeBuilder = assemblyBuilder.DefineType("MultiMethodClass");
 
-        // Create multiple methods
         var addMethod = typeBuilder.DefineMethod("Add", typeof(int), new[] { typeof(int), typeof(int) });
         addMethod.Body(il => il.LoadArgument(1).LoadArgument(2).Add().Return());
 
@@ -196,5 +193,38 @@ public class EasyEmitTests
         Assert.Equal(8, addResult);
         Assert.Equal(6, subtractResult);
         Assert.Equal(42, multiplyResult);
+    }
+
+    [Fact]
+    public void CreateTypeWithProperty_ShouldWorkCorrectly()
+    {
+        // Arrange
+        var assemblyBuilder = EmitFactory.NewAssembly("TestPropertyAssembly");
+        var typeBuilder = assemblyBuilder.DefineType("TestClass");
+
+        var nameProperty = typeBuilder.DefineProperty("Name", typeof(string))
+            .AutoProperty();
+
+        var testType = typeBuilder.CreateType();
+        var assembly = assemblyBuilder.Build();
+
+        // Act
+        var testInstance = Activator.CreateInstance(testType);
+        var namePropertyInfo = testType.GetProperty("Name");
+        var nameGetter = namePropertyInfo?.GetGetMethod();
+        var nameSetter = namePropertyInfo?.GetSetMethod();
+
+        // Assert
+        Assert.NotNull(testType);
+        Assert.NotNull(namePropertyInfo);
+        Assert.NotNull(nameGetter);
+        Assert.NotNull(nameSetter);
+
+        var getValue = nameGetter?.Invoke(testInstance, null);
+        Assert.Null(getValue);
+
+        nameSetter?.Invoke(testInstance, new object[] { "Test Property" });
+        var getValueAfterSet = nameGetter?.Invoke(testInstance, null);
+        Assert.Equal("Test Property", getValueAfterSet);
     }
 }

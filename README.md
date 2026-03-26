@@ -23,7 +23,7 @@ EasyEmit provides a modern, fluent API for dynamic IL generation that abstracts 
 using EasyEmit;
 
 // Create a simple calculator with an Add method
-var assemblyBuilder = EasyEmit.NewAssembly("CalculatorAssembly");
+var assemblyBuilder = EmitFactory.NewAssembly("CalculatorAssembly");
 var typeBuilder = assemblyBuilder.DefineType("Calculator");
 
 var addMethod = typeBuilder.DefineMethod("Add", typeof(int), new[] { typeof(int), typeof(int) });
@@ -53,7 +53,7 @@ using EasyEmit;
 using EasyEmit.Loops;
 
 // Create a type with a factorial method
-var assemblyBuilder = EasyEmit.NewAssembly("MathAssembly");
+var assemblyBuilder = EmitFactory.NewAssembly("MathAssembly");
 var typeBuilder = assemblyBuilder.DefineType("MathOperations");
 
 var factorialMethod = typeBuilder.DefineMethod("Factorial", typeof(long), new[] { typeof(int) });
@@ -92,12 +92,12 @@ var result = factorialMethodInfo?.Invoke(mathInstance, new object[] { 5 });
 
 ## API Reference
 
-### EasyEmit
+### EmitFactory
 
 The entry point for creating dynamic assemblies.
 
 ```csharp
-public static class EasyEmit
+public static class EmitFactory
 {
     public static AssemblyBuilder NewAssembly(string assemblyName)
     {
@@ -129,6 +129,7 @@ public class TypeBuilder
     public TypeBuilder Implements(params Type[] interfaces)
     public MethodBuilder DefineMethod(string methodName, Type returnType, Type[]? parameterTypes = null, MethodAttributes methodAttributes = MethodAttributes.Public)
     public FieldBuilder DefineField(string fieldName, Type fieldType, FieldAttributes fieldAttributes = FieldAttributes.Public)
+    public PropertyBuilder DefineProperty(string propertyName, Type propertyType, PropertyAttributes propertyAttributes = PropertyAttributes.None)
     public Type CreateType()
 }
 ```
@@ -143,6 +144,115 @@ public class MethodBuilder
     public MethodBuilder Body(Action<ILBuilder> bodyAction)
     public ILBuilder GetIL()
 }
+```
+
+### PropertyBuilder
+
+Builder for creating dynamic properties.
+
+```csharp
+public class PropertyBuilder
+{
+    public PropertyBuilder Getter(Action<ILBuilder> getterBody)
+    public PropertyBuilder Setter(Action<ILBuilder> setterBody)
+    public PropertyBuilder AutoProperty(string? backingFieldName = null, FieldAttributes fieldAttributes = FieldAttributes.Private)
+}
+```
+
+#### Property Examples
+
+##### Simple Property with Custom Getter and Setter
+
+```csharp
+using EasyEmit;
+
+var assemblyBuilder = EmitFactory.NewAssembly("PersonAssembly");
+var typeBuilder = assemblyBuilder.DefineType("Person");
+
+// Define a property with custom getter and setter
+var nameProperty = typeBuilder.DefineProperty("Name", typeof(string))
+    .Getter(il =>
+    {
+        // Custom getter logic
+        il.LoadThis()
+              .LoadField("_nameField") // Load backing field
+              .Return();
+    })
+    .Setter(il =>
+    {
+        // Custom setter logic
+        il.LoadThis()
+              .LoadArgument(1) // Load value parameter
+              .StoreField("_nameField") // Store in backing field
+              .Return();
+    });
+
+var personType = typeBuilder.CreateType();
+var assembly = assemblyBuilder.Build();
+
+// Use the property
+var person = Activator.CreateInstance(personType);
+var nameProperty = personType.GetProperty("Name");
+var nameGetter = nameProperty.GetGetMethod();
+var nameSetter = nameProperty.GetSetMethod();
+
+// Set and get property
+nameSetter?.Invoke(person, new object[] { "Alice" });
+var name = nameGetter?.Invoke(person, null); // Returns "Alice"
+```
+
+##### Auto-Property with Automatic Backing Field
+
+```csharp
+using EasyEmit;
+
+var assemblyBuilder = EmitFactory.NewAssembly("PersonAssembly");
+var typeBuilder = assemblyBuilder.DefineType("Person");
+
+// Define an auto-property (creates backing field automatically)
+var nameProperty = typeBuilder.DefineProperty("Name", typeof(string))
+    .AutoProperty(); // Creates getter, setter, and backing field automatically
+
+var personType = typeBuilder.CreateType();
+var assembly = assemblyBuilder.Build();
+
+// Use the property
+var person = Activator.CreateInstance(personType);
+var nameProperty = personType.GetProperty("Name");
+
+// Set and get property
+var nameSetter = nameProperty.GetSetMethod();
+nameSetter?.Invoke(person, new object[] { "Bob" });
+
+var nameGetter = nameProperty.GetGetMethod();
+var name = nameGetter?.Invoke(person, null); // Returns "Bob"
+```
+
+##### Read-Only Property
+
+```csharp
+// Define a read-only property (getter only)
+var ageProperty = typeBuilder.DefineProperty("Age", typeof(int))
+    .Getter(il =>
+    {
+        il.LoadThis()
+              .LoadField("_ageField")
+              .Return();
+    });
+```
+
+##### Write-Only Property
+
+```csharp
+// Define a write-only property (setter only)
+var idProperty = typeBuilder.DefineProperty("Id", typeof(Guid))
+    .Setter(il =>
+    {
+        il.LoadThis()
+              .LoadArgument(1)
+              .StoreField("_idField")
+              .Return();
+    });
 ```
 
 ### ILBuilder
@@ -262,7 +372,7 @@ EasyEmit is designed to be lightweight and efficient:
 ### Array Processing
 
 ```csharp
-var assemblyBuilder = EasyEmit.NewAssembly("ArrayProcessorAssembly");
+var assemblyBuilder = EmitFactory.NewAssembly("ArrayProcessorAssembly");
 var typeBuilder = assemblyBuilder.DefineType("ArrayProcessor");
 
 var sumMethod = typeBuilder.DefineMethod("SumArray", typeof(int), new[] { typeof(int[]) });

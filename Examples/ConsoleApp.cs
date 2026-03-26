@@ -13,52 +13,42 @@ public class ConsoleApp
     {
         Console.WriteLine("=== EasyEmit Library Demonstration ===\n");
 
-        // Example 1: Simple Calculator
         Console.WriteLine("1. Simple Calculator:");
         CreateSimpleCalculator();
         Console.WriteLine();
 
-        // Example 2: Advanced Math Operations
         Console.WriteLine("2. Advanced Math Operations:");
         CreateAdvancedMathOperations();
         Console.WriteLine();
 
-        // Example 3: String Utilities
         Console.WriteLine("3. String Utilities:");
         CreateStringUtilities();
         Console.WriteLine();
 
-        // Example 4: Factorial Calculator (with local variables and loops)
-        Console.WriteLine("4. Factorial Calculator:");
+        Console.WriteLine("4. Factorial Calculator (with local variables and loops):");
         CreateFactorialCalculator();
         Console.WriteLine();
 
         Console.WriteLine("All examples completed successfully!");
     }
 
-    /// <summary>
-    /// Creates a simple calculator with basic arithmetic operations
-    /// </summary>
     static void CreateSimpleCalculator()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("SimpleCalculatorAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("SimpleCalculatorAssembly");
         var typeBuilder = assemblyBuilder.DefineType("SimpleCalculator");
 
-        // Add method
         var addMethod = typeBuilder.DefineMethod("Add", typeof(int), new[] { typeof(int), typeof(int) });
         addMethod.Body(il =>
         {
             il.LoadArgument(1).LoadArgument(2).Add().Return();
         });
 
-        // Subtract method
         var subtractMethod = typeBuilder.DefineMethod("Subtract", typeof(int), new[] { typeof(int), typeof(int) });
         subtractMethod.Body(il =>
         {
             il.LoadArgument(1).LoadArgument(2).Subtract().Return();
         });
 
-        // Multiply method
         var multiplyMethod = typeBuilder.DefineMethod("Multiply", typeof(int), new[] { typeof(int), typeof(int) });
         multiplyMethod.Body(il =>
         {
@@ -68,7 +58,6 @@ public class ConsoleApp
         var calculatorType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test the calculator
         var calculator = Activator.CreateInstance(calculatorType);
 
         var addResult = calculatorType.GetMethod("Add")?.Invoke(calculator, new object[] { 10, 5 });
@@ -80,48 +69,42 @@ public class ConsoleApp
         Console.WriteLine($"  4 * 6 = {multiplyResult}");
     }
 
-    /// <summary>
-    /// Creates advanced math operations including division and power
-    /// </summary>
     static void CreateAdvancedMathOperations()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("AdvancedMathAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("AdvancedMathAssembly");
         var typeBuilder = assemblyBuilder.DefineType("AdvancedMath");
 
-        // Division method
         var divideMethod = typeBuilder.DefineMethod("Divide", typeof(double), new[] { typeof(double), typeof(double) });
         divideMethod.Body(il =>
         {
             il.LoadArgument(1).LoadArgument(2).Divide().Return();
         });
 
-        // Square method
         var squareMethod = typeBuilder.DefineMethod("Square", typeof(double), new[] { typeof(double) });
         squareMethod.Body(il =>
         {
             il.LoadArgument(1).LoadArgument(1).Multiply().Return();
         });
 
-        // Absolute value method
+        // Abs using the safe If API with comparison
         var absMethod = typeBuilder.DefineMethod("Abs", typeof(double), new[] { typeof(double) });
         absMethod.Body(il =>
         {
-            il.LoadArgument(0)
-              .LoadConstant(0.0)
-              .If(
-                  condition => condition.LoadArgument(1).LoadConstant(0.0),
-                  trueBody => trueBody.LoadArgument(1).Return()
-              )
-              .Else(falseBody =>
-              {
-                  falseBody.LoadArgument(1).Negate().Return();
-              });
+            // if (arg1 >= 0) return arg1; else return -arg1;
+            il.If(
+                left: l => l.LoadArgument(1),
+                comparison: ILBuilder.Cgte,
+                right: r => r.LoadConstant(0.0),
+                trueBody: b => b.LoadArgument(1).Return())
+             .Else(elseBody =>
+             {
+                 elseBody.LoadArgument(1).Negate().Return();
+             });
         });
 
         var mathType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test the advanced math operations
         var math = Activator.CreateInstance(mathType);
 
         var divideResult = mathType.GetMethod("Divide")?.Invoke(math, new object[] { 15.0, 3.0 });
@@ -135,15 +118,11 @@ public class ConsoleApp
         Console.WriteLine($"  Abs(-3.2) = {absNegativeResult}");
     }
 
-    /// <summary>
-    /// Creates string utility methods
-    /// </summary>
     static void CreateStringUtilities()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("StringUtilsAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("StringUtilsAssembly");
         var typeBuilder = assemblyBuilder.DefineType("StringUtils");
 
-        // Greeter method
         var greetMethod = typeBuilder.DefineMethod("Greet", typeof(string), new[] { typeof(string) });
         greetMethod.Body(il =>
         {
@@ -153,7 +132,6 @@ public class ConsoleApp
               .Return();
         });
 
-        // String length checker
         var lengthMethod = typeBuilder.DefineMethod("GetLength", typeof(int), new[] { typeof(string) });
         lengthMethod.Body(il =>
         {
@@ -165,7 +143,6 @@ public class ConsoleApp
         var stringType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test string utilities
         var stringUtils = Activator.CreateInstance(stringType);
 
         var greetResult = stringType.GetMethod("Greet")?.Invoke(stringUtils, new object[] { "World" });
@@ -175,12 +152,9 @@ public class ConsoleApp
         Console.WriteLine($"  GetLength(\"EasyEmit\") = {lengthResult}");
     }
 
-    /// <summary>
-    /// Creates a factorial calculator demonstrating local variables and loops
-    /// </summary>
     static void CreateFactorialCalculator()
     {
-        var assemblyBuilder = EasyEmit.NewAssembly("FactorialAssembly");
+        var assemblyBuilder = EmitFactory.NewAssembly("FactorialAssembly");
         var typeBuilder = assemblyBuilder.DefineType("FactorialCalculator");
 
         var factorialMethod = typeBuilder.DefineMethod("Factorial", typeof(int), new[] { typeof(int) });
@@ -189,38 +163,30 @@ public class ConsoleApp
             var result = il.DeclareLocal<int>("result");
             var i = il.DeclareLocal<int>("i");
 
-            // Initialize result = 1
             il.LoadConstant(1).StoreLocal(result);
-
-            // Initialize i = 1
             il.LoadConstant(1).StoreLocal(i);
 
-            // while (i <= n)
             il.While(
-                condition => condition.LoadLocal(i).LoadArgument(1),
+                condition: c => c.LoadLocal(i).LoadArgument(1).Clt(),
                 body =>
                 {
-                    // result = result * i
                     body.LoadLocal(result)
                          .LoadLocal(i)
                          .Multiply()
                          .StoreLocal(result);
 
-                    // i = i + 1
                     body.LoadLocal(i)
                          .LoadConstant(1)
                          .Add()
                          .StoreLocal(i);
                 });
 
-            // Return result
             il.LoadLocal(result).Return();
         });
 
         var factorialType = typeBuilder.CreateType();
         var assembly = assemblyBuilder.Build();
 
-        // Test factorial calculator
         var calculator = Activator.CreateInstance(factorialType);
         var factorialMethodInfo = factorialType.GetMethod("Factorial");
 
